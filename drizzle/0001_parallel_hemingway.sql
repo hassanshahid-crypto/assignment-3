@@ -1,0 +1,1 @@
+ALTER TABLE "chats" ADD COLUMN "edit_versions" text;

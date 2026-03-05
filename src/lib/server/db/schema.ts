@@ -81,6 +81,31 @@ export const passwordResetTokens = pgTable('password_reset_tokens', {
 	createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow()
 });
 
+export const chats = pgTable('chats', {
+	id: text('id')
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	userId: text('user_id')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	title: text('title').notNull().default('New Chat'),
+	editVersions: text('edit_versions'),
+	createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+	updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow()
+});
+
+export const chatMessages = pgTable('chat_messages', {
+	id: text('id')
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	chatId: text('chat_id')
+		.notNull()
+		.references(() => chats.id, { onDelete: 'cascade' }),
+	role: varchar('role', { length: 20 }).notNull(),
+	content: text('content').notNull(),
+	createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow()
+});
+
 export const emailVerificationTokens = pgTable('email_verification_tokens', {
 	id: text('id')
 		.primaryKey()

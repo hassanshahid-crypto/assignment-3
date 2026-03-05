@@ -31,26 +31,14 @@ export const actions: Actions = {
 
 		const formData = await event.request.formData();
 		const name = formData.get('name') as string;
-		const email = formData.get('email') as string;
 
-		if (!name || !email) {
-			return fail(400, { error: 'Name and email are required', success: false });
-		}
-
-		// Check if email is taken by another user
-		const [existing] = await db
-			.select({ id: users.id })
-			.from(users)
-			.where(eq(users.email, email))
-			.limit(1);
-
-		if (existing && existing.id !== session.user.id) {
-			return fail(400, { error: 'Email is already taken', success: false });
+		if (!name) {
+			return fail(400, { error: 'Name is required', success: false });
 		}
 
 		await db
 			.update(users)
-			.set({ name, email, updatedAt: new Date() })
+			.set({ name, updatedAt: new Date() })
 			.where(eq(users.id, session.user.id));
 
 		return { success: true, message: 'Profile updated successfully' };
