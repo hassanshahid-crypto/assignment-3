@@ -34,8 +34,14 @@ export const { handle } = SvelteKitAuth({
 		}
 	},
 	providers: [
-		Google({ allowDangerousEmailAccountLinking: true }),
-		GitHub({ allowDangerousEmailAccountLinking: true })
+		Google({
+			allowDangerousEmailAccountLinking: true,
+			authorization: { params: { prompt: 'select_account' } }
+		}),
+		GitHub({
+			allowDangerousEmailAccountLinking: true,
+			authorization: { params: { prompt: 'consent' } }
+		})
 	],
 	pages: {
 		signIn: '/auth/login'

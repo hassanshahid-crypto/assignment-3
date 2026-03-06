@@ -1,6 +1,16 @@
 import { redirect, type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { handle as authHandle } from './auth';
+import { db } from '$lib/server/db';
+import { sessions } from '$lib/server/db/schema';
+import { dev } from '$app/environment';
+
+// Clear all sessions on dev server startup so users must log in fresh
+if (dev) {
+	db.delete(sessions).then(() => {
+		console.log('[dev] All sessions cleared on startup');
+	}).catch(() => {});
+}
 
 const authorizationHandle: Handle = async ({ event, resolve }) => {
 	const session = await event.locals.auth();

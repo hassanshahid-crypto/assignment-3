@@ -5,9 +5,24 @@ import {
 	integer,
 	primaryKey,
 	varchar,
-	boolean
+	boolean,
+	index,
+	customType
 } from 'drizzle-orm/pg-core';
 import type { AdapterAccountType } from '@auth/core/adapters';
+
+// Custom pgvector type
+const vector = customType<{ data: number[]; driverParam: string }>({
+	dataType() {
+		return 'vector(384)';
+	},
+	toDriver(value: number[]): string {
+		return `[${value.join(',')}]`;
+	},
+	fromDriver(value: unknown): number[] {
+		return JSON.parse(value as string);
+	}
+});
 
 export const users = pgTable('users', {
 	id: text('id')
@@ -117,3 +132,44 @@ export const emailVerificationTokens = pgTable('email_verification_tokens', {
 	expires: timestamp('expires', { mode: 'date' }).notNull(),
 	createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow()
 });
+
+// ── RAG Tables ──
+
+export const documents = pgTable('documents', {
+	id: text('id')
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	name: text('name').notNull(),
+	type: varchar('type', { length: 50 }).notNull().default('text'),
+	content: text('content'),
+	uploadedBy: text('uploaded_by')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow()
+});
+
+export const chunks = pgTable('chunks', {
+	id: text('id')
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	documentId: text('document_id')
+		.notNull()
+		.references(() => documents.id, { onDelete: 'cascade' }),
+	content: text('content').notNull(),
+	chunkIndex: integer('chunk_index').notNull(),
+	createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow()
+});
+
+export const embeddings = pgTable(
+	'embeddings',
+	{
+		id: text('id')
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		chunkId: text('chunk_id')
+			.notNull()
+			.references(() => chunks.id, { onDelete: 'cascade' }),
+		embedding: vector('embedding').notNull()
+	},
+	(table) => [index('embedding_idx').using('hnsw', table.embedding.op('vector_cosine_ops'))]
+);

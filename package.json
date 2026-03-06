@@ -10,7 +10,7 @@
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio",
+    "db:start": "drizzle-kit studio",
     "db:seed": "node scripts/seed.js"
   },
   "type": "module",
@@ -40,6 +40,7 @@
     "ai": "^6.0.111",
     "bcryptjs": "^2.4.3",
     "drizzle-orm": "^0.38.0",
+    "highlight.js": "^11.9.0",
     "marked": "^17.0.4",
     "nodemailer": "^7.0.13",
     "pg": "^8.13.0",
