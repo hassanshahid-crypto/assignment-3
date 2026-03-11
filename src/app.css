@@ -155,6 +155,13 @@
 	background-color: rgba(42, 43, 46, 0.5);
 }
 
+/* ── Accessibility: Focus outlines ── */
+*:focus-visible {
+	outline: 2px solid #34d399;
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
 /* ── Scrollbar styling ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

@@ -146,6 +146,7 @@
 		bd.currentIndex = newIndex;
 		loadBranchVersion(msgIndex, newIndex);
 		scrollToBottom();
+		persistBranches();
 	}
 
 	// ============ CHAT SDK ============
@@ -176,6 +177,7 @@
 						pendingBranchIndex = null;
 					}
 					loadChatList();
+					persistBranches();
 				}
 			}
 		});
@@ -328,9 +330,28 @@
 			const res = await fetch(`/api/chats/${chatId}`);
 			if (res.ok) {
 				const data = await res.json();
-				chat.messages = data.messages.map((m: { id: string; role: string; content: string }) => ({
+				chat.messages = data.messages.map((m: { id: string; role: string; content: string; createdAt: string }) => ({
 					id: m.id, role: m.role, parts: [{ type: 'text', text: m.content }]
 				}));
+				// Restore timestamps
+				const tsMap = new Map<string, Date>();
+				for (const m of data.messages) {
+					tsMap.set(m.id, new Date(m.createdAt));
+				}
+				messageTimestamps = tsMap;
+				// Restore branches
+				if (data.chat?.editVersions) {
+					try {
+						const parsed = typeof data.chat.editVersions === 'string'
+							? JSON.parse(data.chat.editVersions)
+							: data.chat.editVersions;
+						const map = new Map<number, BranchData>();
+						for (const [key, val] of Object.entries(parsed)) {
+							map.set(Number(key), val as BranchData);
+						}
+						branches = map;
+					} catch { /* ignore */ }
+				}
 				scrollToBottom();
 			}
 		} catch { /* ignore */ } finally { loadingHistory = false; }
@@ -377,6 +398,12 @@
 
 		inputValue = '';
 		await chat.sendMessage({ text: messageText });
+		// Record timestamp for the newly added user message
+		const lastMsg = chat.messages[chat.messages.length - 1];
+		if (lastMsg) {
+			messageTimestamps.set(lastMsg.id, new Date());
+			messageTimestamps = new Map(messageTimestamps);
+		}
 	}
 
 	function getMessageText(parts: Array<{ type: string; text?: string }>): string {
@@ -502,6 +529,39 @@
 	function copyToClipboard(text: string) {
 		navigator.clipboard.writeText(text);
 	}
+
+	// ============ BRANCH PERSISTENCE ============
+	async function persistBranches() {
+		if (!activeChatId || branches.size === 0) return;
+		const data: Record<number, BranchData> = {};
+		for (const [key, val] of branches.entries()) {
+			data[key] = val;
+		}
+		try {
+			await fetch(`/api/chats/${activeChatId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ editVersions: data })
+			});
+		} catch { /* ignore */ }
+	}
+
+	// ============ SEARCH ============
+	let searchQuery = $state('');
+	const filteredChatList = $derived(
+		searchQuery.trim()
+			? chatList.filter((c) => c.title.toLowerCase().includes(searchQuery.trim().toLowerCase()))
+			: chatList
+	);
+
+	// ============ TIMESTAMPS ============
+	function formatTime(date: Date | string): string {
+		const d = typeof date === 'string' ? new Date(date) : date;
+		return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+	}
+
+	// Track message timestamps (from DB or generated)
+	let messageTimestamps = $state<Map<string, Date>>(new Map());
 </script>
 
 <svelte:head>
@@ -548,10 +608,22 @@
 			<!-- Tab Content -->
 			{#if sidebarTab === 'chats'}
 				<div class="flex-1 overflow-y-auto p-2 space-y-0.5">
-					{#if chatList.length === 0}
-						<p class="text-xs text-gray-600 text-center mt-8 px-4">No conversations yet</p>
+					<!-- Search -->
+					<div class="px-1 pb-2">
+						<div class="relative">
+							<svg class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+							<input
+								bind:value={searchQuery}
+								placeholder="Search chats..."
+								aria-label="Search chat history"
+								class="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-[#1a1b1e] border border-[#2a2b2e] text-gray-300 placeholder-gray-600 focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+							/>
+						</div>
+					</div>
+					{#if filteredChatList.length === 0}
+						<p class="text-xs text-gray-600 text-center mt-4 px-4">{searchQuery ? 'No matches' : 'No conversations yet'}</p>
 					{/if}
-					{#each chatList as chatItem}
+					{#each filteredChatList as chatItem}
 						<!-- svelte-ignore a11y_click_events_have_key_events -->
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div
@@ -656,7 +728,7 @@
 	<div class="flex-1 flex flex-col min-w-0">
 		<!-- Header -->
 		<div class="px-5 py-3 flex items-center gap-3 border-b border-[#2a2b2e] bg-[#1a1b1e]/80 backdrop-blur-sm">
-			<button onclick={() => (sidebarOpen = !sidebarOpen)} class="p-2 rounded-lg text-gray-400 hover:bg-[#2a2b2e] hover:text-white transition-colors" title="{sidebarOpen ? 'Hide' : 'Show'} sidebar">
+			<button onclick={() => (sidebarOpen = !sidebarOpen)} class="p-2 rounded-lg text-gray-400 hover:bg-[#2a2b2e] hover:text-white transition-colors" title="{sidebarOpen ? 'Hide' : 'Show'} sidebar" aria-label="{sidebarOpen ? 'Hide' : 'Show'} sidebar">
 				<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
 			</button>
 			<div class="flex items-center gap-2.5">
@@ -743,6 +815,7 @@
 									</div>
 								{/if}
 							{/if}
+							<div class="text-[10px] text-gray-600 text-right mt-1 mr-1">{formatTime(messageTimestamps.get(message.id) ?? new Date())}</div>
 						</div>
 						<div class="h-8 w-8 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex-shrink-0 flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-orange-500/20">U</div>
 					</div>
@@ -761,6 +834,7 @@
 									onclick={() => copyToClipboard(getMessageText(message.parts))}
 									class="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-300 transition-colors p-1 rounded"
 									title="Copy to clipboard"
+									aria-label="Copy message to clipboard"
 								>
 									<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>
 								</button>
@@ -768,7 +842,8 @@
 									onclick={() => handleRegenerate(i)}
 									disabled={isBusy}
 									class="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-300 transition-colors disabled:opacity-30 disabled:cursor-not-allowed p-1 rounded"
-									title="Regenerate"
+									title="Regenerate response"
+									aria-label="Regenerate response"
 								>
 									<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M20.985 4.356v4.992" /></svg>
 								</button>
@@ -785,6 +860,7 @@
 									</div>
 								{/if}
 							</div>
+							<div class="text-[10px] text-gray-600 mt-1">{formatTime(messageTimestamps.get(message.id) ?? new Date())}</div>
 						</div>
 					</div>
 				{/if}
@@ -850,10 +926,12 @@
 						bind:value={inputValue}
 						placeholder={selectedFile ? 'Add a message about the document...' : 'Ask Synapse anything...'}
 						disabled={isBusy}
+						aria-label="Message input"
 						class="w-full rounded-2xl border border-[#3a3b3e] bg-[#202124] px-5 py-4 pr-14 text-sm text-gray-100 placeholder-gray-500 focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/20 transition-all duration-300 disabled:opacity-50"
 					/>
 					<button
 						type="submit" disabled={isBusy || (!inputValue.trim() && !selectedFile)}
+						aria-label="Send message"
 						class="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-emerald-900/20"
 					>
 						{#if isBusy}

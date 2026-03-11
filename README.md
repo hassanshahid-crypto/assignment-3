@@ -1,142 +1,147 @@
-# SvelteKit Authentication App with RBAC
+# Synapse AI - RAG-Powered Chat Application
 
-A full-stack authentication application built with SvelteKit 2, Auth.js, PostgreSQL, and Drizzle ORM. Features role-based access control (RBAC) with database-backed sessions.
+A full-stack SvelteKit application with Retrieval-Augmented Generation (RAG) using pgvector, a Python embedding microservice, and a polished dark-themed UI. Built for Assignment 3.
 
 ## Features
 
-- **User Authentication** — Register, login, logout with secure password hashing (bcryptjs)
-- **Database Sessions** — Server-side sessions stored in PostgreSQL (not JWT)
-- **Role-Based Access Control** — User and Admin roles with route-level protection
-- **Admin Dashboard** — User management with stats, role changes, and user deletion
-- **Profile Management** — Update profile info and change password
-- **Responsive UI** — TailwindCSS v4 with mobile-friendly navigation
+- **RAG Backend** - pgvector-backed document ingestion, chunking, embedding, and retrieval
+- **Python Embedding Service** - Containerized FastAPI microservice using `sentence-transformers/all-MiniLM-L6-v2`
+- **Synapse AI Chat** - Streaming AI chat powered by Google Gemini via Vercel AI SDK
+- **Citations** - AI responses cite source documents with `[Source N]` badges
+- **Tree-Structured Chat History** - Edit/regenerate creates branches (GPT-style forking), persisted to DB
+- **Syntax Highlighting** - Code blocks highlighted with highlight.js, with copy buttons
+- **Knowledge Base** - Upload `.txt`, `.md`, `.csv` files; documents are chunked, embedded, and indexed
+- **Auth.js** - Email/password + Google & GitHub OAuth with database sessions
+- **RBAC** - Admin dashboard with user management
+- **Email Flows** - Verification and password reset via SMTP
+- **Accessibility** - Keyboard navigable, aria-labels, focus outlines
+- **Search/Filter** - Search through chat history
 
 ## Tech Stack
 
 - **Framework**: SvelteKit 2 + Svelte 5 (runes syntax)
-- **Authentication**: Auth.js (`@auth/sveltekit`) with Credentials provider
-- **Database**: PostgreSQL + Drizzle ORM
-- **Styling**: TailwindCSS v4
-- **Password Hashing**: bcryptjs
+- **AI**: Vercel AI SDK + Google Gemini (`gemini-2.5-flash`)
+- **Database**: PostgreSQL with pgvector extension (via Docker)
+- **ORM**: Drizzle ORM
+- **Embeddings**: Python FastAPI + sentence-transformers (384-dim vectors)
+- **Auth**: Auth.js (`@auth/sveltekit`) with database sessions
+- **Styling**: TailwindCSS v4 + `@tailwindcss/typography`
+- **Markdown**: marked + highlight.js
 
 ## Prerequisites
 
-- Node.js 18+
-- PostgreSQL database
+- Node.js 18+ and pnpm
+- Docker & Docker Compose
 
-## Setup
+## Quick Start
 
-### 1. Install dependencies
-
-```bash
-npm install
-```
-
-### 2. Configure environment variables
-
-Copy `.env.example` to `.env` and update the values:
+### 1. Clone and configure
 
 ```bash
+git clone https://github.com/hassanshahid-crypto/assignment-3.git
+cd assignment-3
 cp .env.example .env
 ```
 
-```env
-DATABASE_URL=postgresql://username:password@localhost:5432/sveltekit_auth
-AUTH_SECRET=your-secret-key-here
-AUTH_TRUST_HOST=true
-```
+Edit `.env` and set your secrets:
+- `AUTH_SECRET` - generate with `openssl rand -base64 32`
+- `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` - from [Google Cloud Console](https://console.cloud.google.com)
+- `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` - from [GitHub Developer Settings](https://github.com/settings/developers)
+- `GOOGLE_GENERATIVE_AI_API_KEY` - from [Google AI Studio](https://aistudio.google.com/app/apikey)
+- `SMTP_USER` / `SMTP_PASS` - Gmail app password for email flows
 
-Generate a secure `AUTH_SECRET`:
-
-```bash
-openssl rand -base64 32
-```
-
-### 3. Create database tables
+### 2. Start Docker services
 
 ```bash
-npx drizzle-kit push
+docker compose up -d
 ```
 
-### 4. Seed admin user (optional)
+This starts:
+- **pgvector** PostgreSQL on port `5433`
+- **embed-api** Python embedding service on port `8000`
+
+### 3. Install dependencies and set up database
 
 ```bash
-npm run db:seed
+pnpm install
+pnpm db:push
+pnpm db:seed    # Optional: creates admin@example.com / admin123
 ```
 
-This creates an admin account:
-- **Email**: admin@example.com
-- **Password**: admin123
-
-### 5. Start development server
+### 4. Run development server
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Visit `http://localhost:5173`
+
+### 5. Verify
+
+- `http://localhost:5173/healthz` - Health check
+- `http://localhost:5173/version` - Version info
 
 ## Route Structure
 
 | Route | Access | Description |
 |---|---|---|
 | `/` | Public | Landing page |
-| `/auth/login` | Guest only | Login form |
-| `/auth/register` | Guest only | Registration form |
+| `/auth/login` | Guest | Login (email/password + OAuth) |
+| `/auth/register` | Guest | Registration |
+| `/auth/forgot-password` | Guest | Password reset request |
+| `/auth/verify-email` | Public | Email verification |
 | `/dashboard` | Authenticated | User dashboard |
-| `/dashboard/profile` | Authenticated | Profile & password management |
-| `/admin` | Admin only | Admin dashboard with user management |
+| `/dashboard/chat` | Authenticated | Synapse AI chat with RAG |
+| `/dashboard/profile` | Authenticated | Profile management |
+| `/admin` | Admin only | Admin dashboard |
+| `/healthz` | Public | Health check endpoint |
+| `/version` | Public | Version endpoint |
 
-## Project Structure
+## Architecture
 
 ```
-src/
-├── auth.ts                          # Auth.js configuration
-├── hooks.server.ts                  # Request hooks (auth + route protection)
-├── app.css                          # TailwindCSS entry
-├── app.d.ts                         # Type augmentation
-├── app.html                         # HTML template
-├── lib/
-│   ├── components/
-│   │   └── Nav.svelte               # Navigation bar
-│   └── server/
-│       └── db/
-│           ├── index.ts             # Drizzle client
-│           └── schema.ts            # Database schema
-└── routes/
-    ├── +layout.svelte               # Root layout
-    ├── +layout.server.ts            # Session loader
-    ├── +page.svelte                 # Landing page
-    ├── auth/
-    │   ├── login/
-    │   │   ├── +page.svelte         # Login form
-    │   │   └── +page.server.ts      # Login action
-    │   └── register/
-    │       ├── +page.svelte         # Register form
-    │       └── +page.server.ts      # Register action
-    ├── dashboard/
-    │   ├── +page.svelte             # Dashboard home
-    │   └── profile/
-    │       ├── +page.svelte         # Profile page
-    │       └── +page.server.ts      # Profile actions
-    └── admin/
-        ├── +page.svelte             # Admin dashboard
-        └── +page.server.ts          # Admin actions
+Browser (SvelteKit)
+    |
+    |-- /api/chat        --> Gemini API (streaming) + pgvector retrieval
+    |-- /api/documents   --> Document ingestion pipeline
+    |-- /api/chats       --> Chat CRUD + branch persistence
+    |
+    |-- embed-api:8000   --> Python FastAPI (sentence-transformers)
+    |
+    +-- pgvector:5433    --> PostgreSQL + vector similarity search
 ```
 
-## Database Schema
+### RAG Pipeline
 
-- **users** — id, name, email, emailVerified, image, password, role, createdAt, updatedAt
-- **sessions** — sessionToken, userId, expires
-- **accounts** — userId, type, provider, providerAccountId, tokens...
-- **verification_tokens** — identifier, token, expires
+1. **Upload** - User uploads a text file via the Knowledge tab
+2. **Chunk** - File is split into ~500 character chunks
+3. **Embed** - Each chunk is sent to the Python embedding service (384-dim vectors)
+4. **Store** - Chunks and embeddings are stored in pgvector with HNSW index
+5. **Retrieve** - On each chat message, the query is embedded and top-5 similar chunks are fetched
+6. **Generate** - Retrieved context is injected into the system prompt for Gemini
 
-## Authentication Architecture
+### Database Schema
 
-This app uses Auth.js Credentials provider with **database sessions** instead of the default JWT strategy. This is achieved by:
+- `users` - User accounts with roles
+- `sessions` / `accounts` - Auth.js session and OAuth storage
+- `chats` - Chat threads with branch data (`editVersions`)
+- `chat_messages` - Individual messages with timestamps
+- `documents` - Uploaded document metadata
+- `chunks` - Text chunks from documents
+- `embeddings` - 384-dim vectors with HNSW index for cosine similarity
+- `email_verification_tokens` / `password_reset_tokens` - Auth token storage
 
-1. Overriding `jwt.encode`/`jwt.decode` in Auth.js config
-2. Manually creating DB sessions in the `signIn` callback
-3. Using `DrizzleAdapter` for session storage and lookup
+## Environment Variables
 
-This gives us Auth.js's API surface while keeping sessions server-side in PostgreSQL.
+See `.env.example` for the full list with descriptions.
+
+## Scripts
+
+| Command | Description |
+|---|---|
+| `pnpm dev` | Start development server |
+| `pnpm build` | Production build |
+| `pnpm db:push` | Push schema to database |
+| `pnpm db:migrate` | Run migrations |
+| `pnpm db:seed` | Seed admin user |
+| `pnpm check` | Type-check with svelte-check |
