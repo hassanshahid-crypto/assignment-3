@@ -15,6 +15,13 @@
       "when": 1772700693476,
       "tag": "0001_parallel_hemingway",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773218088811,
+      "tag": "0002_lean_sabra",
+      "breakpoints": true
     }
   ]
 }
