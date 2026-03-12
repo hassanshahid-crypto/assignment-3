@@ -5,6 +5,7 @@
 	import { marked } from 'marked';
 	import hljs from 'highlight.js';
 	import 'highlight.js/styles/github-dark.css';
+	import { page } from '$app/stores';
 
 	marked.use({
 		breaks: true,
@@ -574,6 +575,16 @@
 		class="flex-shrink-0 transition-all duration-300 border-r border-[#2a2b2e] bg-[#161619] {sidebarOpen ? 'w-72' : 'w-0 overflow-hidden'}"
 	>
 		<div class="w-72 flex flex-col h-full">
+			<!-- Logo + Back -->
+			<div class="flex items-center gap-2.5 px-4 h-14 border-b border-[#2a2b2e] flex-shrink-0">
+				<a href="/dashboard" class="flex items-center gap-2.5 group" title="Back to Dashboard">
+					<div class="h-8 w-8 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 flex-shrink-0">
+						<svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+					</div>
+					<span class="text-base font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Synapse</span>
+				</a>
+			</div>
+
 			<!-- New Chat Button -->
 			<div class="p-3 border-b border-[#2a2b2e]">
 				<button
@@ -740,27 +751,36 @@
 					<p class="text-[10px] text-gray-500">Powered by Gemini &middot; RAG-enhanced</p>
 				</div>
 			</div>
-			{#if documents.length > 0}
-				<div class="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20">
-					<div class="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse"></div>
-					<span class="text-[10px] font-medium text-cyan-400">{documents.length} doc{documents.length !== 1 ? 's' : ''} indexed</span>
-				</div>
-			{/if}
+			<div class="ml-auto flex items-center gap-3">
+				{#if documents.length > 0}
+					<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20">
+						<div class="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse"></div>
+						<span class="text-[10px] font-medium text-cyan-400">{documents.length} doc{documents.length !== 1 ? 's' : ''} indexed</span>
+					</div>
+				{/if}
+				{#if $page.data.session?.user}
+					<a href="/dashboard/profile" class="flex items-center gap-2 group" title="Profile">
+						<div class="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center flex-shrink-0 ring-2 ring-[#2a2b2e] group-hover:ring-emerald-500/40 transition-all">
+							<span class="text-[11px] font-bold text-white">{($page.data.session.user.name || $page.data.session.user.email)?.[0]?.toUpperCase() ?? '?'}</span>
+						</div>
+					</a>
+				{/if}
+			</div>
 		</div>
 
 		<!-- Chat Messages -->
-		<div bind:this={messagesContainer} class="flex-1 min-h-0 overflow-y-auto px-6 py-6 space-y-6">
+		<div bind:this={messagesContainer} class="flex-1 min-h-0 overflow-y-auto px-6 py-6 space-y-6 relative" style="background: radial-gradient(ellipse at 50% 0%, rgba(16, 185, 129, 0.03) 0%, transparent 50%), radial-gradient(ellipse at 80% 100%, rgba(6, 182, 212, 0.02) 0%, transparent 40%), linear-gradient(to bottom, #1a1b1e 0%, #161619 100%);">
 			{#if loadingHistory}
 				<div class="flex items-center justify-center h-32 text-gray-500">
 					<svg class="animate-spin h-6 w-6" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" /><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
 				</div>
 			{:else if chat.messages.length === 0}
-				<div class="flex flex-col items-center justify-center h-full text-gray-500">
+				<div class="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
 					<div class="h-20 w-20 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 flex items-center justify-center mb-5">
-						<svg class="h-10 w-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+						<svg class="h-10 w-10 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L13.09 8.26L18 6L15.74 10.91L22 12L15.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L8.26 13.09L2 12L8.26 10.91L6 6L10.91 8.26L12 2Z" /></svg>
 					</div>
-					<p class="text-base font-semibold text-gray-200 mb-1">What can I help you with?</p>
-					<p class="text-xs text-gray-600 max-w-sm text-center">Ask anything, or upload documents to the Knowledge tab for RAG-powered answers with citations.</p>
+					<p class="text-lg font-semibold text-gray-200 mb-1">What can I help you with?</p>
+					<p class="text-sm text-gray-500 max-w-sm text-center">Ask anything, or upload documents to the Knowledge tab for RAG-powered answers with citations.</p>
 				</div>
 			{/if}
 
@@ -888,7 +908,7 @@
 		</div>
 
 		<!-- Input Form -->
-		<div class="px-6 pb-5 pt-2 border-t border-[#2a2b2e]/50">
+		<div class="px-6 pb-5 pt-2 border-t border-[#2a2b2e]/50 bg-[#161619]">
 			{#if selectedFile}
 				<div class="mb-2 flex items-center gap-2">
 					<div class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-[#2a2b2e] border border-[#3a3b3e] text-sm">
