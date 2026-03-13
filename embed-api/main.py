@@ -19,7 +19,10 @@ class EmbedBatchRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok"} 
+
+
+
 
 
 @app.post("/embed")
@@ -30,7 +33,7 @@ def embed(req: EmbedRequest):
     return {"embedding": embedding}
 
  
- 
+
 @app.post("/embed-batch")
 def embed_batch(req: EmbedBatchRequest):
     if not req.texts:

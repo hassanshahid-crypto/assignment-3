@@ -3,9 +3,9 @@ services:
     image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-sveltekit_auth}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: hassan
+      POSTGRES_DB: sveltekit_auth
     ports:
       - '5433:5432'
     volumes:
